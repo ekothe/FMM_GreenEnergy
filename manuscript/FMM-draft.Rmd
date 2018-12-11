@@ -1,0 +1,282 @@
+---
+title             : "Uptake of green energy for household power: A comparison of Protection Motivation Theory and Prototype Willingness Model"
+shorttitle        : "Uptake of green energy for household power"
+
+author: 
+  - name          : "Emily J. Kothe"
+    affiliation   : "1"
+    corresponding : yes    # Define only one corresponding author
+    address       : "Postal address"
+    email         : "emily.kothe@deakin.edu.au"
+  - name          : "Raissa Donadon Berne"
+    affiliation   : "1"
+  - name          : "Imogen Russell-Head"
+    affiliation   : "1"
+  - name          : "Mathew Ling"
+    affiliation   : "1"
+
+
+affiliation:
+  - id            : "1"
+    institution   : "Deakin University, Geelong, Australia, Misinformation Lab, School of Psychology"
+
+authornote: |
+  Emily J. Kothe, Misinformation Lab, School of Psychology, Deakin University, Australia. ORCID: 0000-0003-1210-0554. Raissa Donadon Berne, Misinformation Lab, School of Psychology, Deakin University, Australia.  Imogen Russell-Head, Misinformation Lab, School of Psychology, Deakin University, Australia. Mathew Ling, Misinformation Lab, School of Psychology, Deakin University, Australia. ORCID: 0000-0002-0940-2538
+
+abstract: |
+  One or two sentences providing a **basic introduction** to the field,  comprehensible to a scientist in any discipline.
+  
+  Two to three sentences of **more detailed background**, comprehensible  to scientists in related disciplines.
+  
+  One sentence clearly stating the **general problem** being addressed by  this particular study.
+  
+  One sentence summarizing the main result (with the words "**here we show**" or their equivalent).
+  
+  Two or three sentences explaining what the **main result** reveals in direct comparison to what was thought to be the case previously, or how the  main result adds to previous knowledge.
+  
+  One or two sentences to put the results into a more **general context**.
+  
+  Two or three sentences to provide a **broader perspective**, readily comprehensible to a scientist in any discipline.
+  
+  <!-- https://tinyurl.com/ybremelq -->
+  
+keywords          : "environmental psychology; prototype willingness model; protection motivation theory"
+
+bibliography      : ["r-references.bib", "fmm-refs.bib"]
+
+floatsintext      : no
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+linenumbers       : no
+mask              : no
+draft             : no
+
+documentclass     : "apa6"
+classoption       : "man"
+output            : papaja::apa6_pdf
+---
+
+```{r load_packages, include = FALSE}
+library("papaja")
+library(ggplot2)
+library(tidyverse)
+library(flexmix)
+library(here)
+library(scales)
+
+set.seed(77)
+```
+
+```{r analysis}
+# Read and Prep -----------------------------------------------------------
+
+loc <-  here("coded.csv")
+df  <-  read_csv(loc)
+
+df <- select(df, int, sev, sus, mrr, re, rc, se,att, inj, willingness, beh)
+
+df_compl <-  df[complete.cases(df),]
+
+# Mixture model for intention------------------------------------------------
+
+m1 <-  flexmix(int ~ 1, data = df_compl, k = 2,
+               model = list(
+                            FLXMRglm(int ~ . + att + inj + willingness),
+                            FLXMRglm(int ~ . + sev + sus + mrr + re + rc + se)
+                            )
+)
+
+
+m1_post <- as.data.frame(posterior(m1))
+#names(m1_post) <- c("PMT", "PWM")
+
+df_compl$cluster <- m1@cluster
+df_compl <- cbind(df_compl, m1_post)
+
+## Mixture model for intention------------------------------------------------
+#
+#df_compl <- df_compl %>% 
+#  mutate(beh_rc = case_when(
+#    beh == "Green Energy User" ~ 1,
+#    beh == "Non Green Energy User" ~ 0
+#  ))
+#
+#df_compl <- df_compl %>% 
+#  mutate(beh_rc_2 = case_when(
+#    beh == "Green Energy User" ~ 0,
+#    beh == "Non Green Energy User" ~ 1
+#  ))
+#
+#m2 <-  flexmix(c(beh_rc, beh_rc_2) ~ 1, data = df_compl, k = 2,
+#               model = list(FLXMRglmfix(c(beh_rc, beh_rc_2) ~ . + int, family = "binomial"),
+#                            FLXMRglmfix(c(beh_rc, beh_rc_2) ~ . + int + willingness, family = "binomial"))
+#)
+#
+#m2_post <- as.data.frame(posterior(m2))
+#names(m2_post) <- c("PMT", "PWM")
+
+#cluster1 <- df_compl %>% 
+#  filter(cluster == 1)
+#
+#summary(lm(int ~ sev + sus + mrr + re + rc + se, data = cluster1))
+#summary(lm(int ~ att + inj + willingness, data = cluster1))
+#
+#cluster2 <- df_compl %>% 
+#  filter(cluster == 2)
+#
+#summary(lm(int ~ sev + sus + mrr + re + rc + se, data = cluster2))
+#summary(lm(int ~ att + inj + willingness, data = cluster2))
+
+```
+
+Climate change is threatening life on earth in a myriad of ways, including by increasing incidence and intensity of natural disasters and increasing climate related morbidity and mortality through increases in heat waves, increased transmission of infectious diseases such as malaria, decreased air quality and lack of water and food security [@ipcc2018]. Fossil fuel combustion is the largest single contributor to climate change and, despite the growth of non-fossil (green) energy (which currently generates 34% of electricity globally), fossil fuels remain the main energy supplier for heat and electricity generation [@iea2017]. The residential sector is the second largest producer of CO2 emissions from fossil fuels combustion for heat and electricity generation. As such, fossil fuels usage by households needs to be reduced to mitigate climate change [@ipcc2014; @iea2017; @wuebbles2001].
+
+Although studies have shown that household actions can meaningfully contribute to a rapid reduction in CO2 emissions, green energy uptake remains suboptimal [@dietz2009; @iea2017]. In addition to structural barriers to implementation of green energy technologies [@ipcc2014], psychological barriers such as climate change denial, misinformation about climate change, and social norms contribute to the inertia of individual behaviour change regarding fossil fuels reduction [@gabler2013; @reynolds2010; @swim2011]. Understanding of the psychological processes that lead to, or inhibit, green energy uptake behaviour by individuals is crucial to aid in mitigation of climate change. Drivers of behaviour have been examined by several theories  of behaviour change, including  Protection Motivation Theory [@rogers1975], and the Prototype Willingness Model [@gibbons1995; @gibbons1998]. Although these models have been historically applied to understand health behaviours [for reviews, see @milne2000; @todd2016], the limited application of each model to pro-environmental behaviour suggests that they can elucidate the psychological processes underlying green energy uptake. 
+
+## Protection Motivation Theory
+Developed by Rogers [@rogers1975; @maddux1983] to investigate response to health-related fear appeals [for reviews, see @floyd2000; and @milne2000], the PMT postulates that there are two processes that determine engagement in protective behaviours: coping appraisal and threat appraisal (see Figure 1). According to the theory, individuals intend to engage in protective behaviour (i.e. adaptive response) when facing a threatening event when they believe that lack of action would pose a threat to themselves (high threat appraisal) and that performing the protective behaviour would ameliorate that threat (high coping appraisal).  
+
+Within threat appraisal, maladaptive response rewards, threat severity and threat susceptibility are suggested as antecedents of intention to engage in protective behaviour [@prentice1986]. Maladaptive response rewards refer to the intrinsic and extrinsic benefits of neglecting a given protective behaviour, thus this construct has a negative relationship with intention to act protectively [@prentice1986]. Threat severity is a belief about the seriousness of the consequences of the threat; and threat susceptibility is the perception of one’s personal vulnerability to suffering those consequences. According to the theory and to past research that has applied it, higher perceived threat severity and susceptibility correspond to higher intention to engage in the protective behaviour [@rogers1975; @floyd2000; @milne2000]. 
+
+Within coping appraisal, response efficacy, self-efficacy and response costs are proposed as antecedents of intention to adopt a given protective behaviour. Response efficacy relates to the belief that the protective behaviour will effectively avert the threat [@prentice1986]; and self-efficacy is conceptualised as the individual’s perception of his/her ability to perform the protective behaviour [@maddux1983]. Higher response efficacy and self-efficacy predict higher intention to engage in the protective behaviour. On the other hand, response costs refer to the perception of the costs associated with carrying out the protective behaviour; therefore, higher response costs are associated with lower intention to uptake the adaptive response [@prentice1986]. 
+
+Although originally developed to understand the adoption of health-protective behaviour, where extensive evidence supporting the associations among the constructs outlined in the theory has been found [for reviews, see @floyd2000; @milne2000], PMT has since been applied to behaviours outside of a health context such as parenting [@campis1987], tourism [@horng2014], information security [@lebek2014], and disaster preparedness [@bubeck2018]. Despite the limited application of PMT to environmental behaviour, studies have confirmed the usefulness of the theory in predicting pro-environmental intentions [e.g. @bockarjova2014; @rainear2017] and behaviour [@janmaimool2017]. 
+
+For instance, in one of the only studies to apply the full PMT to pro-environmental behaviour, @bockarjova2014 found that all six constructs of the theory significantly predicted intention to adopt electric cars to reduce the threat of climate change. Moreover, each variable was associated with intention in the direction proposed by the theoretical framework; that is, higher perceived severity, susceptibility, response efficacy and self-efficacy were associated with higher intentions to adopt electric cars, whereas higher maladaptive response rewards and response costs were negatively associated with intentions to engage in this behaviour. Similar results have been found in a study of university students’ intention to engage in a range of pro-environmental behaviours (e.g. switching to energy-saving light bulbs) to ameliorate the threat of climate change, with the exception of maladaptive response rewards which was not included as a predictor in this research [@rainear2017]. 
+
+On the other hand, some studies suggest that the predictive utility of PMT is not as consistent in the field of environmental behaviour as it is in health behaviour. For example, in a study investigating the adoption of environmental protective behaviours under drought, @keshavarz2016 found that farmers' perceptions of susceptibility, response efficacy, self-efficacy and response costs predicted the uptake of various pro-environmental behaviours in the expected directions, whereas perceived severity had an unexpected negative relationship with the adoption of the protective behaviours. Additionally, @kim2013 found that perceived severity and self-efficacy positively predicted students’ intentions to reduce fossil fuel usage, to recycle and reuse materials, and to buy environmentally responsible products; while perceived susceptibility and response efficacy did not.  In contrast, @janmaimool2017, when applying the same four constructs to waste management behaviours, found response efficacy to be the only non-significant predictor. This study also found that PMT constructs had different levels of influence on different pro-environmental behaviours, suggesting that PMT is better at predicting less effortful pro-environmental behaviours [@janmaimool2017; @keshavarz2016]. Further variation in results may arise from the wide variety of threats and protective behaviours within the studies, as well as their varying contexts. 
+Regardless of the underlying reasons for slight variations in the predictive utility of each construct within the model, there is enough evidence to suggest that using PMT to understand the uptake of green energy is worthwhile. 
+
+## The Prototype Willingness Model
+Developed by @gibbons1995 to investigate adolescents’ health risk behaviour, and later expanded to adult risk behaviour [for reviews, see @todd2016; @van2016], the PWM postulates that there are two pathways to decision-making: a reasoned pathway, which is similar to the pathway proposed by @ajzen1980 in their Theory of Reasoned Action (TRA), and a social reactive pathway (see Figure 2). According to the theory, protective behaviour tends to be goal-oriented and well predicted by intention, whereas risk behaviour is often unintended and heuristic [@gerrard2008; @van2016]. Thus, the PWM addresses both the deliberative and the heuristic, non-intentional, factors that are antecedents to behaviour [@gerrard2008]. 
+
+Within the reasoned pathway, attitudes towards the behaviour and injunctive norms are predictors of intention to engage in or refrain from a behaviour, and intention is a proximal antecedent of behaviour [@gerrard2008]. Consistent with earlier theories, attitude is the degree of favourability one has toward a behaviour, it reflects a mental evaluation of the outcomes of a behaviour [@ajzen1991]. Injunctive norms refer to the perceived social pressure from important others to engage in or abstain from a behaviour [@manning2009; @sheeran1999].
+
+The social reactive pathway is strongly influenced by situational social factors which facilitate the behaviour [@gerrard2008; @gibbons1998]. Within this path, behavioural willingness (hereafter, willingness) is thought to be the proximal antecedent of behaviour. Willingness is conceptualised as the non-intentional, unplanned antecedent of behaviour; it reflects an openness to engage in a behaviour should the opportunity arise in a social situation [@gerrard2008].  The antecedents of willingness are prototypes and descriptive norms [@gerrard2008; @gibbons2009]. In the PWM, a prototype is a mental image of the typical person who engages in or refrains from a given behaviour [@gibbons1995]. Prototypes are thought to influence willingness through perceived similarity, where greater similarity to the prototype predicts greater willingness to engage in the behaviour; and favourability, where a more positive mental evaluation of the prototype also results in greater willingness [@gibbons1995]. Descriptive norms are the perception of how other people typically behave [@manning2009; @sheeran1999].
+
+Importantly, the reasoned and reactive pathways of decision-making are not mutually exclusive and are thought to work simultaneously [@gerrard2008]. Although originally developed to explain risk behaviour, the PWM was subsequently used to predict health protective behaviours such as exercising [@rivis2006] and seeking psychological help [@hammer2013]; as well as behaviours outside of a health context, such as disclosure of personal information on social media [@van2015]. There is a robust body of evidence in the literature to support the associations among the constructs outlined in the PWM within a health context [for reviews, see @hammer2013; @todd2016; @van2016]. While studies applying the PWM to pro-environmental behaviour are limited, studies of cycling behaviour [@daley2011; @gatersleben2010], recycling [@ohtomo2007], and self-reported engagement in environmentally friendly behaviours [@ratliff2017] suggest that the application of the full PWM to individual fossil fuel usage behaviour is worth exploring.
+
+For example, in a study using the PWM to explore the decision-making process in recycling behaviour, @ohtomo2007 found that elements of the reasoned pathway predicted intention to recycle, which in turn predicted recycling behaviour; whereas elements of the social reactive pathway predicted willingness to accept non-recycling behaviour, which predicted the inhibition of recycling behaviour. Furthermore, links between prototypes and behaviour have been established; studies have found significant associations among prototypes of cyclists and intention to cycle, as well as prototypes of cyclists and cycling behaviour [@daley2011; @gatersleben2010]. Similarly, a study using the prototype favourability component of the PWM found that favourability of prototypical environmentalists predicted self-reported engagement in environmentally friendly behaviour [@ratliff2017]. Although these findings suggest that, in line with the theoretical framework of the PWM, prototype similarity and favourability influence pro-environmental behaviours, important constructs of the PWM such as willingness and descriptive norms were not explored.
+
+Moreover, research has indicated that the addition of the social reactive pathway accounts for pro-environmental behaviour over and above the influence of the reasoned action pathway. For instance, a study investigating whether the PWM would improve prediction of adolescents’ intention to cycle to school found that the social reactive variables of the PWM explained an additional 2% of the variance in intention after controlling for elements of the TPB  [@frater2017]. However, the main difference between the PWM and other social cognitive theories of behaviour is that it considers the unintentional determinants of behaviour [@todd2016], and the direct pathway from willingness to behaviour has often been ignored within the pro-environmental behaviour literature [e.g. @frater2017; @gatersleben2010]. Thus, comprehensive applications of the PWM to pro-environmental behaviour in the literature, which encompass all the components of the deliberative and heuristic pathways, are limited. Given the potential of the model to account for the reasoned and heuristic behavioural pathways of decision-making, the current study was necessary to address this gap.
+
+## Comparing models
+There has been a proliferation of theories of behaviour and behaviour change over the last half century [@davis2015]. However, researchers within health psychology have noted that these theories have only rarely been directly compared. Where studies have been conducted to test competing theories this has often taken the form of comparing models on the basis of R^2 (proportion of variance explained). However, this approach is problematic since theories with greater constructs will often account for a larger proportion of variance without necessarily providing a more parsimonious or better fitting account of predictors of health behaviour. Further, such an approach assumes that one model is superior to another across all participants within a sample. However, given that theorists within this domain do not contend that any theory provides a complete accounting of behaviour across all context it may be that one theory provides a better account of behaviour than another only for a subset of participants within a sample. For example, previous research has demonstrated that alcohol consumption can be explained by two competing theories - such that some participants display a pattern of beliefs and behaviour that are best accounting for “bonding” theories of alcohol consumption whereas other participants’ behaviour may be more consistent with “learning” theories of alcohol consumption. Given the possibility, indeed near certainty, of between-individual variability in the drivers of any given behaviour, methods of theory comparison would do well to compare theories not only only in terms of conceptual coherence, utility in predicting behaviour across the population, but also with regard to proportion of participants whose patterns of beliefs and behaviour are consistent with that theory (as opposed to a competing theory) and the factors that could account for [something].. This would be better if I had references on hand.
+
+Psychological research has traditionally considered competing theories separately when investigating the underlying constructs that influence behaviour (reference); however, “something” suggests the existence of between-individual variability in drivers of behaviour (reference). That is, individuals might be influenced to behave a certain way by different variables. 
+
+## The current study
+The present study moves beyond traditional model comparison studies by using finite mixture modeling to test the efficacy of two competing social cognitive theories for predicting uptake of green energy.  
+Research Question 1: What is the average degree to which individual’s intentions and behaviours are consistent with each theory? 
+Research Question 2: What proportion of individuals are statistically significantly consistent with each theory? 
+Research Question 3: What proportion of individuals are classified as most consistent with PMT vs. PWM?
+
+
+
+
+## Interpretation plan
+These research questions will be assessed through the mean and median posterior probabilities for consistency with each theory and the overall distributions of posterior probabilities. We will identify those individuals who are statistically significantly consistent with each theory, and identify the proportion of individuals whose green energy use is best explained by each theory according to group assignment by maximum posterior probability. To obtain the maximum likelihood estimates, the Expectation Maximization (EM) algorithm (Dempster, Laird, and Rubin 1997) will applied to the complete data. Whether each individual’s responses are “statistically significantly consistent” with a theory as evidenced by exceeding explicit statistical criteria for group assignment as per Imai and Tingley (2012). 
+
+
+
+# Methods
+We report how we determined our sample size, all data exclusions (if any), all manipulations, and all measures in the study. <!-- 21-word solution (Simmons, Nelson & Simonsohn, 2012; retrieved from http://ssrn.com/abstract=2160588) -->
+
+## Procedure
+Adult participants (over 18 years) residing in the USA were invited to complete an online questionnaire through the crowdsourcing platform Amazon Mechanical Turk, a recruitment method that has been shown to yield generalisable results that are more demographically diverse than convenience samples (Jeong et al., 2018). Participants were required to read the Plain Language Statement (see Appendix A) and indicate their consent to participate in the study before starting the survey. Participants received $1.20 as reimbursement for their time in taking the 10-minute survey.
+
+## Measures
+The first section of the survey asked about participants’ demographics. The second section included measures of PMT and PWM (see full survey in Appendix A).
+
+### Demographics. 
+Participants were asked to report the state where they reside (options included all states in the USA), their gender (Male/Female/Other-Not Specified), age, level of education (ranging from 1 = less than high school to 7 = doctorate), the number of people living in their household, and their political ideology (measured using a single-item self-placement measure on a scale ranging from 0 = very liberal to 10 = very conservative).
+
+### Protection Motivation Theory. 
+The PMT construct measures were adapted from Kim et al. (2013), Stanley and Maddux (1986), Koerth et al. (2013) and Rainear and Christensen (2017). All response items were rated on 5-point Likert scales ranging from 1 (strongly disagree) to 5 (strongly agree).
+
+#### Threat severity. 
+Three items measured threat severity with responses recorded on a five-point Likert scale (e.g. the negative impact of climate change will be very severe; 1 = Strongly Disagree, 5 = Strongly Agree,). Scores were summed and averaged for the three questions. Higher scores corresponded to higher perceived threat severity.  Threat severity was assessed with the items: 1) “The negative impact of climate change will be very severe”, 2) “Climate change will threaten the American way of life” and 3) “Climate change will have serious consequences for someone like me”. An average of all questions was calculated to obtain total scores. Cronbach’s alpha for the measure was .88.
+
+#### Threat susceptibility. 
+Three items measured threat susceptibility with responses recorded on a five-point Likert scale (e.g. I am vulnerable to the negative impacts of climate change; 1 = Strongly Disagree, 5 = Strongly Agree). One item was negatively coded with “Strongly Agree” corresponding to lower perceived susceptibility; this item was reverse coded prior to creation of the total score. Scores were summed and averaged for the three questions. Higher scores corresponded to higher perceived susceptibility.  Threat susceptibility was assessed with the items: 1) “I am vulnerable to the negative impacts of climate change”, 2) “Even if climate change is happening, I don't think I'm likely to experience negative consequences” and 3) “I am personally at risk from the negative impacts of climate change”. Item 2 was reverse scored so that higher scores reflected higher perceived susceptibility. Cronbach’s alpha for the measure was .74.
+
+#### Maladaptive response rewards. 
+Three items measured maladaptive response rewards with responses recorded on a five-point Likert scale (e.g. The climate changing would have some advantages for me; 1 = Strongly Disagree, 5 = Strongly Agree). Scores were summed and averaged for the three questions. Higher scores corresponded to a higher perception of maladaptive response rewards.  To assess maladaptive response rewards, participants answered the items 1) “The climate changing would have some advantages for me”, 2) “If the climate changes, then the weather where I live will be more pleasant”, and 3) “If I do nothing to reduce the risk of climate change I won't have to spend time, effort, or money to change my behaviour”. Cronbach’s alpha for the measure was .72.
+
+#### Response Efficacy. 
+Three items measured r Response efficacy was measured with the items 1) “I’m sure that using green power for household electricity would be effective in reducing my personal risk of experiencing negative impacts of climate change”, 2) “If I use green power for household electricity it will have a meaningful impact on the consequences of climate change”, and 3) “My use of green power for household electricity would reduce the negative consequences of a changing climate”. Items were averaged to obtain total scores. (e.g. My use of green power for household would reduce the negative consequences of a changing climate; 1 = Strongly Disagree, 5 = Strongly Agree).  Scores were summed and averaged for the three questions. Higher scores corresponded to higher response efficacy. Cronbach’s alpha for the measure was .86.
+
+#### Self-efficacy. 
+Three items measured self-efficacy with responses recorded on a five-point Likert scale (e.g. Using green power for household electricity is easy; 1 = Strongly Disagree, 5 = Strongly Agree). One item was negatively coded with “Strongly Agree” corresponding to lower self-efficacy, and was reverse coded prior to creation of the total score. Scores were summed and averaged for the three questions. Higher scores corresponded to higher self-efficacy.  To measure self-efficacy, participants answered the items: 1) “I’d be able to use green power for my household electricity generation if I wanted to”, 2) “Using green power for household electricity would be difficult for me” and 3) “Using green power for household electricity is easy”. Item 2 was reverse scored so that higher scores reflected higher self-efficacy, and total scores were obtained by an average of all items. Cronbach’s alpha for the measure was .71.
+
+#### Response costs. 
+To measure response costs, participants were asked: 1) “Using green power for household electricity would have some disadvantages for me”, 2) “Using green power for household electricity is expensive”, and 3) “Using green power for household electricity is a hassle”. All items were averaged to produce total scores. This construct was negatively coded in analyses as it has a negative effect on intention. Cronbach’s alpha for the measure was .74.
+
+#### Prototypes. 
+A brief definition of a prototype, derived from Gibbons et al. (1995), was provided. To measure prototype favourability, participants were asked to “think about the type of person who uses green power for household electricity” (adapted from Gibbons & Gerrard, 1995), and select words that described their impression of that type of person from a list of characteristics (derived from Klas, Zinkiewicz, Zhou, & Clarke, 2018). Traits that reflected a negative evaluation of the prototype (arrogant, pushy, stubborn) were assigned a score of -1; traits which reflected higher prototype favourability (dedicated, caring, informed) were assigned a score of +1. The traits “patriotic” and “responsible” were included for exploratory reasons, and therefore were assigned a score of 0. Items were added to result in a scale ranging from -3 (very low prototype favourability) to +3 (very high prototype favourability). Prototype similarity was assessed with a single item: “In general, how similar are you to the type of person your age who uses green power for their household electricity?”, (adapted from Frater et al., 2017) with answers ranging from 1 (not at all similar to me) to 5 (very similar to me).
+
+####  Willingness. 
+Participants were presented with a scenario (see Appendix B) and asked to rate their willingness to engage in the following behaviours: 1) “In this situation, how willing would you be to switch to green power immediately?”, and 2) “In this situation, how willing would you be to leave your energy plan as is?” (adapted from Gerrard et al., 2002). Response items were rated on a 5-point Likert scale from 1 (not at all willing) to 5 (extremely willing). Item 2 was reverse scored so that higher values reflected greater willingness to use green energy, and total willingness score was obtained by averaging both items. Internal consistency for this sample was low ($\alpha$ = .18).
+
+#### Attitudes. 
+To measure attitudes, participants were asked to complete the sentence “If I were to use green power for household electricity it would be”, by answering six bipolar semantic differential items 5-point Likert scales: 1) wise/foolish; 2) worthless/valuable; 3) beneficial/harmful; 4) satisfactory/unsatisfactory; 5) bad/good; 6) positive/negative (adapted from Ajzen, 1985, 2006). Items 1, 3, 4 and 6 were reverse scored so that higher values reflected positive attitudes toward green energy use; then, an average of all items was calculated to obtain overall scores. Internal consistency for this sample was $\alpha$ = .88.
+
+#### Injunctive norms. 
+The items “People who are important to me would _________ of me using green power for household electricity” and “My family would _________ of me using green power for household electricity” assessed injunctive norms, with responses ranging from 1 (strongly disapprove) to 5 (strongly approve) on a Likert scale (adapted from Ajzen, 1985, 2006). Items were averaged to obtain overall scores. Internal consistency for this sample was $\alpha$ = .86.
+
+#### Descriptive norms. 
+To measure descriptive norms, participants were asked to rate the items “People who are important to me use green power for household electricity” and “The people in my life whose opinions I value use green power for household electricity” from 1 (completely false) to 5 (completely true) on a Likert scale (adapted from Frater et al., 2017). Items were averaged to obtain overall scores. Internal consistency for this sample was $\alpha$ = .92.
+
+#### Intention. 
+Intention was measured by three items on Likert scales ranging from 1 (strongly disagree) to 5 (strongly agree). The items were: “I intend to use green power for household electricity”, “I plan to use green power for household electricity” and “I expect to use green power for household electricity” (adapted from Ajzen, 1985, 2006). Items were averaged to obtain overall scores. Cronbach’s alpha for this sample was $\alpha$ = .94.
+
+#### Behaviour. 
+Participants were asked “Do you currently receive some or all of your household electricity from a ‘green power’ provider?” and “Do you currently receive some or all of your household power from residential solar panels, wind turbines, or other ‘green power’ sources that are located on your property?”; possible responses to both items were “Yes”, “No” and “I don’t know”. When participants answered either “No” or “I don’t know”, this was the end of the survey for them, and their response was coded as non-green energy user. When participants answered “Yes”, they were considered a green energy user and third item was asked: “How much of your household electricity do you receive from green power sources on your property?”. Possible responses included “None”, “I don’t know”, and “All” (see Appendix A); only responses from participants who answered “None” to this item were coded as non-green energy user, all other responses were coded as green energy user.
+
+## Pre-registration
+The study’s aims, hypotheses, design and proposed data analysis were pre-registered prior to data collection (see: https://osf.io/6drfw/)
+
+## Data analysis
+We used `r cite_r("r-references.bib")` for all our analyses.
+
+# Results
+
+## Pre-registered analyses
+
+Figure \@ref(fig:probdist) illustrates the distribution of individuals’ posterior probabilities for being consistent with each theory. On average, individuals’ intention to use green energy is predominately influenced by PWM processes ($\mu$ PWM = `r mean(m1_post$PWM)`); however, one the whole individuals are still influenced by PMT variables to a nontrivial degree ($\mu$ PMT = `r mean(m1_post$PMT)`). Overall, `r m1@size[2]/nrow(df_compl) * 100`% of individuals have posterior probabilities that are more consistent with PWM than PMT. 
+
+```{r probdist, fig.cap="Distribution of posterior probabilities of consistency with each theory"}
+
+tidy <- gather(m1_post, key = "theory", value = "probability")
+
+ggplot(tidy, aes(probability, fill = theory)) + 
+  geom_histogram(binwidth = 0.02, position = "dodge") +
+  theme_classic()+
+  scale_x_continuous(expand = c(0.01,0), breaks=pretty_breaks(n=10)) +
+  scale_y_continuous(expand = c(0,0))
+
+```
+
+## Exploratory analyses
+
+Seperate regression models were conducted to examine each theory amongst (a) All participants in the sample and (b) participants best classified using that theory (i.e. posterior probability of assignment to the theory > .50).
+
+
+
+# Discussion
+
+
+\newpage
+
+# References
+```{r create_r-references}
+r_refs(file = "r-references.bib")
+```
+
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
+<div id = "refs"></div>
+\endgroup
