@@ -71,7 +71,7 @@ set.seed(77)
 ```{r analysis}
 # Read and Prep -----------------------------------------------------------
 
-loc <-  here("coded.csv")
+loc <-  here("data", "coded.csv")
 df  <-  read_csv(loc)
 
 df <- select(df, int, sev, sus, mrr, re, rc, se,att, inj, willingness, beh)
