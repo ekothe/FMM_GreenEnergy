@@ -6,7 +6,7 @@ author:
   - name          : "Emily J. Kothe"
     affiliation   : "1"
     corresponding : yes    # Define only one corresponding author
-    address       : "Postal address"
+    address       : ""
     email         : "emily.kothe@deakin.edu.au"
   - name          : "Raissa Donadon Berne"
     affiliation   : "1"
@@ -53,7 +53,7 @@ mask              : no
 draft             : no
 
 documentclass     : "apa6"
-classoption       : "man"
+classoption       : "jou"
 output            : papaja::apa6_pdf
 ---
 
@@ -64,75 +64,66 @@ library(tidyverse)
 library(flexmix)
 library(here)
 library(scales)
+library(lambda)
 
 set.seed(77)
 ```
 
-```{r analysis}
+```{r analysis, echo=FALSE, message = FALSE}
 # Read and Prep -----------------------------------------------------------
 
 loc <-  here("data", "coded.csv")
-df  <-  read_csv(loc)
+df  <-  read_csv(loc) %>% 
+  select(int, sev, sus, mrr, re, rc, se,att, inj, willingness, beh) 
 
-df <- select(df, int, sev, sus, mrr, re, rc, se,att, inj, willingness, beh)
-
-df_compl <-  df[complete.cases(df),]
+df <-  df[complete.cases(df),]
 
 # Mixture model for intention------------------------------------------------
 
-m1 <-  flexmix(int ~ 1, data = df_compl, k = 2,
-               model = list(
-                            FLXMRglm(int ~ . + att + inj + willingness),
-                            FLXMRglm(int ~ . + sev + sus + mrr + re + rc + se)
-                            )
-)
+mycontrol <- list(iter.max = 2000, minprior = 0, classify = "weighted") #parameters for mixture 
+
+setup <- FLXMRglmfix(nested = list(k = c(1, 1), #sets up 2 different models
+                                    formula = c(int ~ . + att + inj + willingness, 
+                                                int ~ . + sev + sus + mrr + re + rc + se)))
+m1 <- stepFlexmix(int ~  1, #make ~1 if no clustering
+                             model = setup, k = 2, data = df, nrep=20, control=mycontrol, verbose = FALSE)
+m1_refit <- refit(m1)
+#summary(m1_refit)
 
 
-m1_post <- as.data.frame(posterior(m1))
-#names(m1_post) <- c("PMT", "PWM")
+df <- df %>% 
+  mutate(cluster = as.factor(case_when(
+    m1@cluster == 1 ~ "PWM",
+    m1@cluster == 2 ~ "PMT")),
+    post_PWM = m1@posterior$scaled[,1],
+    post_PMT = m1@posterior$scaled[,2])
 
-df_compl$cluster <- m1@cluster
-df_compl <- cbind(df_compl, m1_post)
 
-## Mixture model for intention------------------------------------------------
-#
-#df_compl <- df_compl %>% 
-#  mutate(beh_rc = case_when(
-#    beh == "Green Energy User" ~ 1,
-#    beh == "Non Green Energy User" ~ 0
-#  ))
-#
-#df_compl <- df_compl %>% 
-#  mutate(beh_rc_2 = case_when(
-#    beh == "Green Energy User" ~ 0,
-#    beh == "Non Green Energy User" ~ 1
-#  ))
-#
-#m2 <-  flexmix(c(beh_rc, beh_rc_2) ~ 1, data = df_compl, k = 2,
-#               model = list(FLXMRglmfix(c(beh_rc, beh_rc_2) ~ . + int, family = "binomial"),
-#                            FLXMRglmfix(c(beh_rc, beh_rc_2) ~ . + int + willingness, family = "binomial"))
-#)
-#
-#m2_post <- as.data.frame(posterior(m2))
-#names(m2_post) <- c("PMT", "PWM")
+# Mixture model for behaviour------------------------------------------------
 
-#cluster1 <- df_compl %>% 
-#  filter(cluster == 1)
-#
-#summary(lm(int ~ sev + sus + mrr + re + rc + se, data = cluster1))
-#summary(lm(int ~ att + inj + willingness, data = cluster1))
-#
-#cluster2 <- df_compl %>% 
-#  filter(cluster == 2)
-#
-#summary(lm(int ~ sev + sus + mrr + re + rc + se, data = cluster2))
-#summary(lm(int ~ att + inj + willingness, data = cluster2))
+df <- df %>% 
+  mutate(beh_num = case_when(
+    beh == "Green Energy User" ~ 1,
+    beh == "Non Green Energy User" ~ 0))
+
+setup2 <- FLXMRglmfix(family = "binomial", nested = list(k = c(1, 1), #sets up 2 different models
+                                    formula = c(~ . + int, 
+                                                ~ . + int + willingness)))
+m2 <- stepFlexmix(cbind(beh_num, 1) ~  1, #make ~1 if no clustering
+                             model = setup2, k = 2, data = df, nrep=20, control=mycontrol, verbose = FALSE)
+
+df <- df %>% 
+  mutate(beh_cluster = as.factor(case_when(
+    m2@cluster == 1 ~ "PMT",
+    m2@cluster == 2 ~ "PWM")),
+    beh_post_PWM = m2@posterior$scaled[,1],
+    beh_post_PMT = m2@posterior$scaled[,2])
 
 ```
 
 Climate change is threatening life on earth in a myriad of ways, including by increasing incidence and intensity of natural disasters and increasing climate related morbidity and mortality through increases in heat waves, increased transmission of infectious diseases such as malaria, decreased air quality and lack of water and food security [@ipcc2018]. Fossil fuel combustion is the largest single contributor to climate change and, despite the growth of non-fossil (green) energy (which currently generates 34% of electricity globally), fossil fuels remain the main energy supplier for heat and electricity generation [@iea2017]. The residential sector is the second largest producer of CO2 emissions from fossil fuels combustion for heat and electricity generation. As such, fossil fuels usage by households needs to be reduced to mitigate climate change [@ipcc2014; @iea2017; @wuebbles2001].
 
-Although studies have shown that household actions can meaningfully contribute to a rapid reduction in CO2 emissions, green energy uptake remains suboptimal [@dietz2009; @iea2017]. In addition to structural barriers to implementation of green energy technologies [@ipcc2014], psychological barriers such as climate change denial, misinformation about climate change, and social norms contribute to the inertia of individual behaviour change regarding fossil fuels reduction [@gabler2013; @reynolds2010; @swim2011]. Understanding of the psychological processes that lead to, or inhibit, green energy uptake behaviour by individuals is crucial to aid in mitigation of climate change. Drivers of behaviour have been examined by several theories  of behaviour change, including  Protection Motivation Theory [@rogers1975], and the Prototype Willingness Model [@gibbons1995; @gibbons1998]. Although these models have been historically applied to understand health behaviours [for reviews, see @milne2000; @todd2016], the limited application of each model to pro-environmental behaviour suggests that they can elucidate the psychological processes underlying green energy uptake. 
+Although studies have shown that household actions can meaningfully contribute to a rapid reduction in CO2 emissions, green energy uptake remains sub-optimal [@dietz2009; @iea2017]. In addition to structural barriers to implementation of green energy technologies [@ipcc2014], psychological barriers such as climate change denial, misinformation about climate change, and social norms contribute to the inertia of individual behaviour change regarding fossil fuels reduction [@gabler2013; @reynolds2010; @swim2011]. Understanding of the psychological processes that lead to, or inhibit, green energy uptake behaviour by individuals is crucial to aid in mitigation of climate change. Drivers of behaviour have been examined by several theories  of behaviour change, including  Protection Motivation Theory [@rogers1975], and the Prototype Willingness Model [@gibbons1995; @gibbons1998]. Although these models have been historically applied to understand health behaviours [for reviews, see @milne2000; @todd2016], the limited application of each model to pro-environmental behaviour suggests that they can elucidate the psychological processes underlying green energy uptake. 
 
 ## Protection Motivation Theory
 Developed by Rogers [@rogers1975; @maddux1983] to investigate response to health-related fear appeals [for reviews, see @floyd2000; and @milne2000], the PMT postulates that there are two processes that determine engagement in protective behaviours: coping appraisal and threat appraisal (see Figure 1). According to the theory, individuals intend to engage in protective behaviour (i.e. adaptive response) when facing a threatening event when they believe that lack of action would pose a threat to themselves (high threat appraisal) and that performing the protective behaviour would ameliorate that threat (high coping appraisal).  
@@ -162,29 +153,25 @@ For example, in a study using the PWM to explore the decision-making process in 
 Moreover, research has indicated that the addition of the social reactive pathway accounts for pro-environmental behaviour over and above the influence of the reasoned action pathway. For instance, a study investigating whether the PWM would improve prediction of adolescents’ intention to cycle to school found that the social reactive variables of the PWM explained an additional 2% of the variance in intention after controlling for elements of the TPB  [@frater2017]. However, the main difference between the PWM and other social cognitive theories of behaviour is that it considers the unintentional determinants of behaviour [@todd2016], and the direct pathway from willingness to behaviour has often been ignored within the pro-environmental behaviour literature [e.g. @frater2017; @gatersleben2010]. Thus, comprehensive applications of the PWM to pro-environmental behaviour in the literature, which encompass all the components of the deliberative and heuristic pathways, are limited. Given the potential of the model to account for the reasoned and heuristic behavioural pathways of decision-making, the current study was necessary to address this gap.
 
 ## Comparing models
-There has been a proliferation of theories of behaviour and behaviour change over the last half century [@davis2015]. However, researchers within health psychology have noted that these theories have only rarely been directly compared. Where studies have been conducted to test competing theories this has often taken the form of comparing models on the basis of R^2 (proportion of variance explained). However, this approach is problematic since theories with greater constructs will often account for a larger proportion of variance without necessarily providing a more parsimonious or better fitting account of predictors of health behaviour. Further, such an approach assumes that one model is superior to another across all participants within a sample. However, given that theorists within this domain do not contend that any theory provides a complete accounting of behaviour across all context it may be that one theory provides a better account of behaviour than another only for a subset of participants within a sample. For example, previous research has demonstrated that alcohol consumption can be explained by two competing theories - such that some participants display a pattern of beliefs and behaviour that are best accounting for “bonding” theories of alcohol consumption whereas other participants’ behaviour may be more consistent with “learning” theories of alcohol consumption. Given the possibility, indeed near certainty, of between-individual variability in the drivers of any given behaviour, methods of theory comparison would do well to compare theories not only only in terms of conceptual coherence, utility in predicting behaviour across the population, but also with regard to proportion of participants whose patterns of beliefs and behaviour are consistent with that theory (as opposed to a competing theory) and the factors that could account for [something].. This would be better if I had references on hand.
+There has been a proliferation of theories of behaviour and behaviour change over the last half century [@davis2015]. However, researchers within health psychology have noted that these theories have only rarely been directly compared. Where studies have been conducted to test competing theories this has often taken the form of comparing models on the basis of R^2^ (proportion of variance explained). However, this approach is problematic since theories with greater constructs will often account for a larger proportion of variance without necessarily providing a more parsimonious or better fitting account of predictors of health behaviour. Further, such an approach assumes that one model is superior to another across all participants within a sample. However, given that theorists within this domain do not contend that any theory provides a complete accounting of behaviour across all context it may be that one theory provides a better account of behaviour than another only for a subset of participants within a sample. For example, previous research has demonstrated that alcohol consumption can be explained by two competing theories - such that some participants display a pattern of beliefs and behaviour that are best accounting for “bonding” theories of alcohol consumption whereas other participants’ behaviour may be more consistent with “learning” theories of alcohol consumption. Given the possibility, indeed near certainty, of between-individual variability in the drivers of any given behaviour, methods of theory comparison would do well to compare theories not only only in terms of conceptual coherence, utility in predicting behaviour across the population, but also with regard to proportion of participants whose patterns of beliefs and behaviour are consistent with that theory (as opposed to a competing theory) and the factors that could account for [something].. This would be better if I had references on hand.
 
 Psychological research has traditionally considered competing theories separately when investigating the underlying constructs that influence behaviour (reference); however, “something” suggests the existence of between-individual variability in drivers of behaviour (reference). That is, individuals might be influenced to behave a certain way by different variables. 
 
 ## The current study
-The present study moves beyond traditional model comparison studies by using finite mixture modeling to test the efficacy of two competing social cognitive theories for predicting uptake of green energy.  
-Research Question 1: What is the average degree to which individual’s intentions and behaviours are consistent with each theory? 
-Research Question 2: What proportion of individuals are statistically significantly consistent with each theory? 
-Research Question 3: What proportion of individuals are classified as most consistent with PMT vs. PWM?
+The present study moves beyond traditional model comparison studies by using finite mixture modeling to test the efficacy of two competing social cognitive theories for predicting uptake of green energy. 
 
-
-
+- Research Question 1: What is the average degree to which individual’s intentions and behaviours are consistent with each theory? 
+- Research Question 2: What proportion of individuals are statistically significantly consistent with each theory? 
+- Research Question 3: What proportion of individuals are classified as most consistent with PMT vs. PWM?
 
 ## Interpretation plan
 These research questions will be assessed through the mean and median posterior probabilities for consistency with each theory and the overall distributions of posterior probabilities. We will identify those individuals who are statistically significantly consistent with each theory, and identify the proportion of individuals whose green energy use is best explained by each theory according to group assignment by maximum posterior probability. To obtain the maximum likelihood estimates, the Expectation Maximization (EM) algorithm (Dempster, Laird, and Rubin 1997) will applied to the complete data. Whether each individual’s responses are “statistically significantly consistent” with a theory as evidenced by exceeding explicit statistical criteria for group assignment as per Imai and Tingley (2012). 
-
-
 
 # Methods
 We report how we determined our sample size, all data exclusions (if any), all manipulations, and all measures in the study. <!-- 21-word solution (Simmons, Nelson & Simonsohn, 2012; retrieved from http://ssrn.com/abstract=2160588) -->
 
 ## Procedure
-Adult participants (over 18 years) residing in the USA were invited to complete an online questionnaire through the crowdsourcing platform Amazon Mechanical Turk, a recruitment method that has been shown to yield generalisable results that are more demographically diverse than convenience samples (Jeong et al., 2018). Participants were required to read the Plain Language Statement (see Appendix A) and indicate their consent to participate in the study before starting the survey. Participants received $1.20 as reimbursement for their time in taking the 10-minute survey.
+Adult participants (over 18 years) residing in the USA were invited to complete an online questionnaire through the crowd-sourcing platform Amazon Mechanical Turk, a recruitment method that has been shown to yield generalisable results that are more demographically diverse than convenience samples (Jeong et al., 2018). Participants were required to read the Plain Language Statement (see Appendix A) and indicate their consent to participate in the study before starting the survey. Participants received $1.20 as reimbursement for their time in taking the 10-minute survey.
 
 ## Measures
 The first section of the survey asked about participants’ demographics. The second section included measures of PMT and PWM (see full survey in Appendix A).
@@ -242,30 +229,114 @@ We used `r cite_r("r-references.bib")` for all our analyses.
 
 # Results
 
-## Pre-registered analyses
+## Intention
 
-Figure \@ref(fig:probdist) illustrates the distribution of individuals’ posterior probabilities for being consistent with each theory. On average, individuals’ intention to use green energy is predominately influenced by PWM processes ($\mu$ PWM = `r mean(m1_post$PWM)`); however, one the whole individuals are still influenced by PMT variables to a nontrivial degree ($\mu$ PMT = `r mean(m1_post$PMT)`). Overall, `r m1@size[2]/nrow(df_compl) * 100`% of individuals have posterior probabilities that are more consistent with PWM than PMT. 
+### Pre-registered analyses
+
+Figure \@ref(fig:probdist) illustrates the distribution of individuals’ posterior probabilities for being consistent with each theory. Examining the mean posterior probability of classification using each theory indicates that on average, individuals’ intention to use green energy is predominately influenced by PWM processes ($\mu$ PWM = `r mean(df$post_PWM)`); however, on the whole individuals are still influenced by PMT variables to a substantial degree ($\mu$ PMT = `r mean(df$post_PMT)`). Importantly, the distribution of posterior probabilities are skewed and thus the medians shows the opposite pattern (median PWM = `r median(df$post_PWM)`; median PWM = `r median(df$post_PMT)`). 
+
+Overall, `r nrow(filter(df, cluster == "PMT"))/nrow(df) * 100`% of individuals have posterior probabilities that are more consistent with PMT than PWM (i.e. $\zeta$~PMT~~,~ ~i~ > .5; $\zeta$~PWM~~,~ ~i~ < .5) and are therefore classified as consistent with PMT based on maximum posterior probability group assignment. 
+
+`r nrow(filter(df, post_PWM >= lambda_max(df$post_PWM, 0.05)))` participants had posterior probabilities of assignment to PWM that were greater than the established threshold for statistically significant classification to that theory, where `r nrow(filter(df, post_PMT >= lambda_max(df$post_PMT, 0.05)))` participants exceeded that threshold for PMT. This indicates that overall `r nrow(filter(df, post_PWM >= lambda_max(df$post_PWM, 0.05))) + nrow(filter(df, post_PMT >= lambda_max(df$post_PMT, 0.05))) / nrow(df) * 100`% of participants held intentions that were best explained by a single theory (in this case PWM), and that instead the majority of participants would be better explained by a combination of the two theories - each to a greater or lesser extent.
 
 ```{r probdist, fig.cap="Distribution of posterior probabilities of consistency with each theory"}
 
-tidy <- gather(m1_post, key = "theory", value = "probability")
+tidy <- gather(select(df, post_PWM, post_PMT), key = "theory", value = "probability")
 
 ggplot(tidy, aes(probability, fill = theory)) + 
-  geom_histogram(binwidth = 0.02, position = "dodge") +
+  geom_histogram(binwidth = 0.05, position="dodge") +
+  geom_vline(xintercept = 0.5) +
+  facet_wrap(facets = "theory")+
   theme_classic()+
-  scale_x_continuous(expand = c(0.01,0), breaks=pretty_breaks(n=10)) +
-  scale_y_continuous(expand = c(0,0))
+  scale_x_continuous(expand = c(0.01,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme(panel.spacing.x=unit(2, "lines"))
 
 ```
 
-## Exploratory analyses
+### Exploratory analyses
 
-Seperate regression models were conducted to examine each theory amongst (a) All participants in the sample and (b) participants best classified using that theory (i.e. posterior probability of assignment to the theory > .50).
+Separate regression models were conducted to examine each theory among (a) All participants in the sample and (b) participants best classified using that theory (i.e. posterior probability of assignment to the theory > .50).
 
+#### PWM
+
+```{r wholepwm, results = 'asis'}
+whole_pwm <- lm(int ~ att + inj + willingness, data = df) %>% 
+    apa_print()
+
+apa_table(whole_pwm$table, caption = "Regression results for PWM in full analytic sample")
+```
+
+```{r subpwm, results = 'asis'}
+sub_pwm <- lm(int ~ att + inj + willingness, data = filter(df, cluster == "PWM")) %>% 
+    apa_print()
+
+apa_table(sub_pwm$table, caption = "Regression results for PWM in PWM cluster sample")
+```
+
+Linger regression analysis was conducted to examine the PWM in the full analytic sample and in the PWM sub-sample. As shown in Table \@ref(tab:wholepwm), injunctive norms, willingness, and attitudes predicted intention in the full sample. Overall the model was significant `r whole_pwm$full_result$modelfit[[1]]` in the full sample. In constrast, when only considering individuals who were classified as consistent with PWM, attitude was not a significant predictor behaviour (see Table \@ref(tab:subpwm)). Using only data individuals best classied by PMW, the model remained significant, although the proportion of variance in intention accounted for was reduced `r sub_pwm$full_result$modelfit[[1]]`.
+
+#### PMT
+```{r wholepmt, results="asis"}
+whole_pmt <- lm(int ~ sev + sus + mrr + re + rc + se, data = df) %>% 
+    apa_print()
+
+apa_table(whole_pmt$table, "Regression results for PMT in full analytic sample")
+```
+
+```{r subpmt, results="asis"}
+sub_pmt <- lm(int ~ sev + sus + mrr + re + rc + se, data = filter(df, cluster == "PMT")) %>% 
+    apa_print()
+sub_pmt$table$predictor <- c("Intercept", "Severity", "Susceptibility", "MRR", "Response Efficacy", "Response Costs", "Self-Efficacy")
+
+apa_table(sub_pmt$table, caption = "Regression results for PMT in PMT cluster sample")
+```
+
+Regression analysis was conducted to examine the PMT in the full analytic sample and in the PMT sub-sample. As shown in Table \@ref(tab:wholepmt), all PMT constructs other than response costs predicted intention in the full sample. Overall the full sample model was significant `r whole_pmt$full_result$modelfit[[1]]`. In contrast, when only considering individuals who were classified as consistent with PMT, only self-efficacy, response costs, and severity were significant predictors of intention (see Table \@ref(tab:subpmt)). The cluster model remained significant, and the proportion of variance in intention accounted for was substantially increased `r sub_pmt$full_result$modelfit[[1]]`. 
+
+## Behaviour
+
+### Pre-registered analyses
+Figure \@ref(fig:probdistbeh) illustrates the distribution of individuals’ posterior probabilities for being consistent with each theory. Examining the mean posterior probability of classification using each theory indicates that on average, individuals’ intention to use green energy is predominately influenced by PWM processes ($\mu$ PWM = `r mean(df$beh_post_PWM)`; median PWM = `r median(df$beh_post_PWM)`); however, on the whole individuals are still influenced by PMT variables to a substantial degree ($\mu$ PMT = `r mean(df$beh_post_PMT)`; `r median(df$beh_post_PMT)`). Overall, `r nrow(filter(df, beh_cluster == "PWM"))/nrow(df) * 100`% of individuals have posterior probabilities that are more consistent with PMT than PWM (i.e. $\zeta$~PMT~~,~ ~i~ > .5; $\zeta$~PWM~~,~ ~i~ < .5) and are therefore classified as consistent with PMT based on maximum posterior probability group assignment. However, given that the posterior probabilities are clustered near 0.5 no participants were classified as statistically significantly classified as consistent with either theory.
+
+```{r probdistbeh, fig.cap="Distribution of posterior probabilities of consistency with each theory", warning=FALSE}
+
+tidy_beh <- gather(select(df, beh_post_PWM, beh_post_PMT), key = "theory", value = "probability")
+
+ggplot(tidy_beh, aes(probability, fill = theory)) + 
+  geom_histogram() +
+  geom_vline(xintercept = 0.5) +
+  facet_wrap(facets = "theory")+
+  theme_classic()+
+  scale_x_continuous(expand = c(0.01,0),limits = c(0,1)) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme(panel.spacing.x=unit(2, "lines"))
+
+```
+
+### Exploratory analyses
+
+```{r results = "asis"}
+int_only <- glm(beh_num ~ int, data = df) %>% 
+  apa_print()
+```
+
+```{r results = "asis"}
+int_will <- glm(beh_num ~ int + willingness, data = df) %>% 
+  apa_print()
+```
+Given that all participants were classified in the single PMT cluster, both theories were analysed in the entire analytic subsample. When intention was the only predictor of behaviour (consistent with PMT) it was a significant predictor of behaviour (`r int_only$full_result$int`). When intention and willingess were entered together (consistent with PWM), intention remained a significant predictor of behaviour (`r int_will$full_result$int`) however willingess was not (`r int_will$full_result$willingness`).
 
 
 # Discussion
 
+This study uses a new application of FMM to address to recent criticism of a one-size fits-all approach to evaluating models of behaviour and behaviour change within applied psychology. The current study directly compared PWM and PMT in order to examine the relative utility of each theory. Specifically, we generated posterior probabilities for each individual being consistent with the two alternative theories in order to examine the performance of each theory among the overall sample and among individuals classified using that theory. 
+
+First, consistent with previous studies - both PMT and PWM variables accounted for a significant proportion of variance in intention across the entire sample. Importantly, the distribution of posterior probabilities indicates that for most individuals intention is likely to be formed on the basis of both PWM and PMT related processes. 
+
+In contrast, willingness was not a significant predictor of behaviour, and thus all participants in the sample were best classified using PMT with regard to behaviour.
+
+Although 
 
 \newpage
 

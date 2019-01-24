@@ -3,3 +3,13 @@
 .RData
 .Ruserdata
 data/raw_data.csv
+*.fff
+*.aux
+*.out
+*.ttt
+FMM-draft_cache/
+FMM-draft_files/
+.Rbuildignore
+*.Rproj
+*.pdf
+*.tex
