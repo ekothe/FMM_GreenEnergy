@@ -14,11 +14,15 @@ author:
     affiliation   : "1"
   - name          : "Mathew Ling"
     affiliation   : "1"
+  - name          : "Charles T. Gray"
+    affiliation   : "2"
 
 
 affiliation:
   - id            : "1"
     institution   : "Deakin University, Geelong, Australia, Misinformation Lab, School of Psychology"
+  - id            : "2"
+    institution   : "La Trobe University"
 
 authornote: |
   Emily J. Kothe, Misinformation Lab, School of Psychology, Deakin University, Australia. ORCID: 0000-0003-1210-0554. Raissa Donadon Berne, Misinformation Lab, School of Psychology, Deakin University, Australia.  Imogen Russell-Head, Misinformation Lab, School of Psychology, Deakin University, Australia. Mathew Ling, Misinformation Lab, School of Psychology, Deakin University, Australia. ORCID: 0000-0002-0940-2538
@@ -118,6 +122,15 @@ df <- df %>%
     m2@cluster == 2 ~ "PWM")),
     beh_post_PWM = m2@posterior$scaled[,1],
     beh_post_PMT = m2@posterior$scaled[,2])
+
+some_data <- as.data.frame(m1@posterior[["scaled"]]) %>% select(V1)
+
+lambda_1 <- lambda_inf()
+
+some_data <- as.data.frame(m2@posterior[["scaled"]]) %>% select(V1)
+
+lambda_2 <- lambda_inf()
+
 
 ```
 
@@ -237,7 +250,7 @@ Figure \@ref(fig:probdist) illustrates the distribution of individuals’ poster
 
 Overall, `r nrow(filter(df, cluster == "PMT"))/nrow(df) * 100`% of individuals have posterior probabilities that are more consistent with PMT than PWM (i.e. $\zeta$~PMT~~,~ ~i~ > .5; $\zeta$~PWM~~,~ ~i~ < .5) and are therefore classified as consistent with PMT based on maximum posterior probability group assignment. 
 
-`r nrow(filter(df, post_PWM >= lambda_max(df$post_PWM, 0.05)))` participants had posterior probabilities of assignment to PWM that were greater than the established threshold for statistically significant classification to that theory, where `r nrow(filter(df, post_PMT >= lambda_max(df$post_PMT, 0.05)))` participants exceeded that threshold for PMT. This indicates that overall `r nrow(filter(df, post_PWM >= lambda_max(df$post_PWM, 0.05))) + nrow(filter(df, post_PMT >= lambda_max(df$post_PMT, 0.05))) / nrow(df) * 100`% of participants held intentions that were best explained by a single theory (in this case PWM), and that instead the majority of participants would be better explained by a combination of the two theories - each to a greater or lesser extent.
+`r nrow(filter(df, post_PWM >= lambda_1))` participants had posterior probabilities of assignment to PWM that were greater than the established threshold for statistically significant classification to that theory, where `r nrow(filter(df, post_PMT >= lambda_1))` participants exceeded that threshold for PMT. This indicates that overall `r (nrow(filter(df, post_PWM >= lambda_1)) + nrow(filter(df, post_PMT >= lambda_1))) / nrow(df) * 100`% of participants held intentions that were best explained by a single theory (in this case mostly PWM), and that instead the majority of participants would be better explained by a combination of the two theories - each to a greater or lesser extent.
 
 ```{r probdist, fig.cap="Distribution of posterior probabilities of consistency with each theory"}
 
